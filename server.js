@@ -8,12 +8,14 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import { fileURLToPath } from "url";
 import morgan from "morgan";
+import { logger } from "./middlewares/logEvents.js";
 
 //Configuration
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
 const app = express();
+app.use(logger);
 app.use(express.json());
 app.use(cookieParser());
 app.use(helmet());
@@ -29,6 +31,10 @@ app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 const PORT = process.env.PORT || 3500;
 
 //Routes
+
+app.get("/", (req, res) => {
+  res.send("Hello world");
+});
 
 mongoose
   .connect(process.env.DATABASE_URL, {
