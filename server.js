@@ -8,7 +8,9 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import { fileURLToPath } from "url";
 import morgan from "morgan";
+import multer from "multer";
 import { logger } from "./middlewares/logEvents.js";
+import { register } from "./controllers/authController.js";
 
 //Configuration
 const __filename = fileURLToPath(import.meta.url);
@@ -26,16 +28,26 @@ app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 app.use(cors());
 app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 
-//Mongoose Set Up
+//File Storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "public/assets");
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  },
+});
 
-const PORT = process.env.PORT || 3500;
+const upload = multer({ storage });
+
+//Routes with file upload
+app.post("/auth/register", upload.single("picture"), register);
 
 //Routes
 
-app.get("/", (req, res) => {
-  res.send("Hello world");
-});
+//Mongoose Set Up
 
+const PORT = process.env.PORT || 3500;
 mongoose
   .connect(process.env.DATABASE_URL, {
     useNewUrlParser: true,
