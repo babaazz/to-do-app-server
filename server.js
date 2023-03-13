@@ -13,6 +13,7 @@ import { logger } from "./middlewares/logEvents.js";
 import { register } from "./controllers/authController.js";
 import authRoutes from "./routes/authRoutes.js";
 import refreshRoute from "./routes/refreshRoute.js";
+import logoutRoute from "./routes/logoutRoute.js";
 
 //Configuration
 const __filename = fileURLToPath(import.meta.url);
@@ -48,6 +49,7 @@ app.post("/auth/register", upload.single("picture"), register);
 //Routes
 app.use("/auth", authRoutes);
 app.use("/refresh", refreshRoute);
+app.use("/logout", logoutRoute);
 
 //Mongoose Set Up
 
