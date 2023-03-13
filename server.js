@@ -11,6 +11,8 @@ import morgan from "morgan";
 import multer from "multer";
 import { logger } from "./middlewares/logEvents.js";
 import { register } from "./controllers/authController.js";
+import authRoutes from "./routes/authRoutes.js";
+import refreshRoute from "./routes/refreshRoute.js";
 
 //Configuration
 const __filename = fileURLToPath(import.meta.url);
@@ -44,6 +46,8 @@ const upload = multer({ storage });
 app.post("/auth/register", upload.single("picture"), register);
 
 //Routes
+app.use("/auth", authRoutes);
+app.use("/refresh", refreshRoute);
 
 //Mongoose Set Up
 

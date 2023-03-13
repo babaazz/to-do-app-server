@@ -25,3 +25,46 @@ export const register = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+//Login
+
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email: email });
+
+    if (!user) return res.status(400).json({ message: "User doesn't exist" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid Credentials" });
+
+    const accessToken = jwt.sign(
+      {
+        id: user._id,
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: "700s" }
+    );
+    const refreshToken = jwt.sign(
+      {
+        id: user._id,
+      },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    user.password = undefined;
+
+    res.cookie("jwt", refreshToken, {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    res.status(200).json({ accessToken, user });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
