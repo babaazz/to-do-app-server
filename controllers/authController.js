@@ -1,4 +1,3 @@
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
@@ -6,21 +5,28 @@ import User from "../models/User.js";
 
 export const register = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, picturePath } = req.body;
-
-    const salt = await bcrypt.genSalt();
-    const passwordHash = await bcrypt.hash(password, salt);
-
-    const newUser = new User({
+    const {
       firstName,
       lastName,
       email,
-      password: passwordHash,
+      password,
+      confirmPassword,
+      picturePath,
+    } = req.body;
+
+    const newUser = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      confirmPassword,
       picturePath,
       toDoList: [],
     });
-    const savedUser = await newUser.save();
-    res.status(201).json(savedUser);
+
+    newUser.password = undefined;
+
+    res.status(201).json(newUser);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -31,13 +37,15 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email: email });
+    if (!email || !password)
+      return res
+        .status(400)
+        .json({ message: "Please provide Email and password" });
 
-    if (!user) return res.status(400).json({ message: "User doesn't exist" });
+    const user = await User.findOne({ email: email }).select("+password");
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Invalid Credentials" });
+    if (!user || !(await user.isPasswordMatched(password, user.password)))
+      return res.status(400).json({ message: "Email or Password incorrect" });
 
     const accessToken = jwt.sign(
       {
@@ -54,8 +62,11 @@ export const login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    user.refreshToken = refreshToken;
-    await user.save();
+    const loggedInUser = await User.findOneAndUpdate(
+      { email: email },
+      { $set: { refreshToken: refreshToken } },
+      { new: true }
+    );
 
     user.password = undefined;
 
@@ -63,7 +74,7 @@ export const login = async (req, res) => {
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,
     });
-    res.status(200).json({ accessToken, user });
+    res.status(200).json({ accessToken, user: loggedInUser });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -73,14 +84,49 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    const { email } = req.body;
-    const user = await User.findOne({ email: email });
+    const user = await User.findById(req.user);
 
     if (!user) return res.status(404).json({ message: "User doesn't exist" });
 
-    user.refreshToken = undefined;
-    await user.save();
-    res.status(201).json({ message: "User Logged Out" });
+    const updatedUser = await User.findOneAndUpdate(
+      { email: user.email },
+      {
+        $set: { refreshToken: "lol" },
+      },
+      { new: true }
+    );
+    res.status(200).json({ message: "User Logged Out", user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const handleRefresh = async (req, res) => {
+  try {
+    const cookies = req.cookies;
+    if (!cookies?.jwt)
+      return res.status(401).json({ message: "Not Authorised" });
+    console.log(cookies.jwt);
+    const refreshToken = cookies.jwt;
+    const foundUser = await User.findOne({ refreshToken: refreshToken });
+    if (!foundUser) return res.status(403).json({ message: "Forbidden" });
+
+    jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET,
+      (err, decoded) => {
+        const foundUserId = foundUser._id.valueOf();
+        if (err || foundUserId !== decoded.id)
+          return res.status(403).json({ message: "forbidden" });
+
+        const accessToken = jwt.sign(
+          { id: foundUser._id },
+          process.env.ACCESS_TOKEN_SECRET,
+          { expiresIn: "700s" }
+        );
+        res.status(201).json({ accessToken });
+      }
+    );
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

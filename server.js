@@ -12,8 +12,7 @@ import multer from "multer";
 import { logger } from "./middlewares/logEvents.js";
 import { register } from "./controllers/authController.js";
 import authRoutes from "./routes/authRoutes.js";
-import refreshRoute from "./routes/refreshRoute.js";
-import logoutRoute from "./routes/logoutRoute.js";
+import toDosRoutes from "./routes/todoRoutes.js";
 
 //Configuration
 const __filename = fileURLToPath(import.meta.url);
@@ -48,14 +47,13 @@ app.post("/auth/register", upload.single("picture"), register);
 
 //Routes
 app.use("/auth", authRoutes);
-app.use("/refresh", refreshRoute);
-app.use("/logout", logoutRoute);
+app.use("/todos", toDosRoutes);
 
 //Mongoose Set Up
 
-const PORT = process.env.PORT || 3500;
+const PORT = process.env.PORT || 6000;
 mongoose
-  .connect(process.env.DATABASE_URL, {
+  .connect(process.env.LOCAL_DATABASE_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
