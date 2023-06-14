@@ -4,11 +4,12 @@ import {
   getAllToDos,
   removeToDo,
 } from "../controllers/todoController.js";
+import { verifyJWT } from "../middlewares/verifyJWT.js";
 
 const router = express.Router();
 
-router.get("/:userId/allToDos", getAllToDos);
-router.post("/addToDo", addToDo);
-router.delete("/removeToDo", removeToDo);
+router.get("/", verifyJWT, getAllToDos);
+router.post("/add", verifyJWT, addToDo);
+router.delete("/remove/:id", verifyJWT, removeToDo);
 
 export default router;
